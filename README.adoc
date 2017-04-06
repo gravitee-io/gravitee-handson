@@ -1,0 +1,207 @@
+[[graviteeio-hands-on]]
+Gravitee.io hands-on
+--------------------
+
+[[pre-requisites]]
+Pre-requisites
+~~~~~~~~~~~~~~
+
+- Docker (or mongoDB, ES2 and apache/nginx)
+- JDK8
+- Maven3 and your favorite IDE (for the step 9 only)
+
+[[install-mongodb]]
+Install MongoDB
++++++++++++++++
+
+[[with-docker]]
+With Docker
+
+[source,docker]
+----
+docker run -d -p 27017:27017 --name mongo mongo:3
+----
+
+[[with-binary]]
+With binary
+
+* Download https://docs.mongodb.com/manual/installation/[MongoDB]
+
+[source,bash]
+----
+./mongod
+----
+
+[[install-es2]]
+Install ES 2
+++++++++++++
+
+[[with-docker-1]]
+With Docker
+
+[source,docker]
+----
+docker run -d -p 9300:9300 --name es2 elasticsearch:2
+----
+
+[[with-binary-1]]
+With binary
+
+* Download
+https://www.elastic.co/fr/downloads/elasticsearch[ElasticSearch]
+
+[source,bash]
+----
+./bin/elasticsearch
+----
+
+[[installation-of-gravitee.io]]
+Installation of gravitee.io
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Download the latest version: https://download.gravitee.io/graviteeio-apim/distributions/graviteeio-full-1.5.1.zip
+* Unzip it
+* Open a terminal and go to the gravitee distribution directory 'graviteeio-full-1.5.1'
+
+[[running]]
+Running
+~~~~~~~
+
+[[gateway]]
+Gateway
+^^^^^^^
+
+[source,bash]
+----
+./graviteeio-gateway-1.5.1/bin/gravitee
+----
+
+Check: http://localhost:8082
+
+[[management-api]]
+Management API
+^^^^^^^^^^^^^^
+
+[source,bash]
+----
+./graviteeio-management-api-1.5.1/bin/gravitee
+----
+
+Check: http://localhost:8083/management/swagger.json
+
+[[portal-management-ui-docker-nginx]]
+Portal / Management UI (docker nginx)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Do not forget to replace the absolute path on the following command:
+
+[source,docker]
+----
+docker run -d -p 80:80 -v absolute_path/graviteeio-full-1.5.1/graviteeio-management-ui-1.5.1:/usr/share/nginx/html:ro --name graviteeio-nginx nginx
+----
+
+Now, let's link the management rest-api by modifying the file 'graviteeio-management-ui-1.5.1/constants.json':
+"baseURL": "/management/" => "baseURL": "http://localhost:8083/management/"
+
+
+Your Gravitee.io web application should be now available at: http://localhost
+
+[[use-case]]
+Use case
+~~~~~~~~
+
+Context: I would like to make available to a Zenika partner the list of
+available courses (title, description and duration) in JSON format:
+
+[source,json]
+----
+[
+  {
+    "title": "Title",
+    "description": "Description",
+    "duration": "Duration"
+  }
+]
+----
+
+_Log in to the portal as an ''API Publisher'' => api1 / api1_
+
+_Do not hesitate to consult https://docs.gravitee.io[Gravitee.io documentation]_
+
+**Step 1 - Create the API**
+
+Create an API with a keyless plan pointing on the Zenika's website: https://training.zenika.com/formations
+
+**Step 2 - Quick mode**
+
+Provide a mock API to freeze the API keyless service contract
+
+**Step 3 - Quick & dirty mode**
+
+Use the Zenika website to make available the real data
+
+Tips: transform html to json, then json to json with the specification below:
+
+[source,json]
+----
+[
+  {
+    "operation": "shift",
+    "spec": {
+      "*": {
+        "*": {
+          "@": "[#2].&2"
+        }
+      }
+    }
+  }
+]
+----
+
+**Step 4 - Performance**
+
+Use a cache in the gateway by defining a resource on your API
+
+**Step 5 - Rate limiting**
+
+Limit keyless access to 5 calls every 10 seconds and find out that you are limited by calling the gateway: http://localhost:your_port/your_target_endpoint
+
+**Step 6 - Subscription to a plan api-key**
+
+Add a plan "Gold" with a limit of 1000 calls per day (do not forget to publish it), subscribe with one of your applications, deploy and find out that you are not limited by calling the gateway: http://localhost:your_port/your_target_endpoint?api-key=your_api-key
+
+**Step 7 - Analytics and export**
+
+Check the dashboard that contains your API data and export your API!
+
+**Step 8 - Add a swagger documentation**
+
+Add a swagger documentation by fetching http://localhost:8083/management/swagger.json
+
+**Step 9 - Custom policy**
+
+As a developer, i want to simulate network latency on the api to check how my front application handle this.
+
+Create a custom policy to put a configurable time of latency (time and time unit)
+
+To do so, you can use the https://github.com/gravitee-io/gravitee-policy-blank[gravitee-policy-blank]
+
+- git clone git@github.com:gravitee-io/gravitee-policy-blank.git gravitee-policy-latency
+
+- Rename packages / classes
+
+- Replace All 'blank' by 'latency'
+
+- Implement your latency policy @onRequest
+
+- Generate the json schema by building your project with Maven
+
+- Replace your json schema content by the one generated on target
+
+- Build your plugin and put it on your management-api and gateway plugins directory
+
+- And voila!
+
+**Step 10 - Add a latency on your API**
+
+Add a latency of 10 seconds on your API and check in analytics that the latency is effectively on the gateway and not on the API
